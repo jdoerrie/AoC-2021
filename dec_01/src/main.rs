@@ -8,9 +8,13 @@ fn main() {
         .lines()
         .map(|line| line.unwrap().parse().unwrap())
         .collect();
-    let counts: u32 = depths
+    let depth_windows: Vec<i32> = depths[..]
+        .windows(3)
+        .map(|window| window.iter().sum())
+        .collect();
+    let counts: u32 = depth_windows
         .iter()
-        .zip(depths.iter().skip(1))
+        .zip(depth_windows.iter().skip(1))
         .map(|(curr, next)| (curr < next) as u32)
         .sum();
     println!("{}", counts);
