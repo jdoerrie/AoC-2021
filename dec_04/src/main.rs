@@ -83,13 +83,19 @@ fn main() {
         }
     }
 
+    let mut last_score = 0i32;
     for num in bingo_numbers {
         for board in &mut bingo_boards {
+            if board.is_bingo() {
+                continue;
+            }
+
             board.mark(num);
             if board.is_bingo() {
-                println!("{}", num * board.sum_unmarked());
-                return;
+                last_score = num * board.sum_unmarked();
             }
         }
     }
+
+    println!("{}", last_score);
 }
