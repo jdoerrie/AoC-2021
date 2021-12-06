@@ -14,7 +14,7 @@ fn main() {
         fishes[fish] += 1;
     }
 
-    for _ in 0..80 {
+    for _ in 0..256 {
         fishes = [
             fishes[1],             // fishes[0]
             fishes[2],             // fishes[1]
