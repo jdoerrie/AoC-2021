@@ -50,7 +50,9 @@ fn main() {
         .lock()
         .lines()
         .map(|line| parse_line(line.unwrap()))
-        .filter(|Line((x1, y1), (x2, y2))| x1 == x2 || y1 == y2)
+        .filter(|Line((x1, y1), (x2, y2))| {
+            x1 == x2 || y1 == y2 || (x2 - x1).abs() == (y2 - y1).abs()
+        })
         .flat_map(|line| line.iter())
     {
         *map.entry(point).or_default() += 1;
