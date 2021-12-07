@@ -1,7 +1,8 @@
+use std::cmp::min;
 use std::io::BufRead;
 
 fn main() {
-    let mut crabs: Vec<i32> = std::io::stdin()
+    let crabs: Vec<i32> = std::io::stdin()
         .lock()
         .lines()
         .next()
@@ -10,10 +11,17 @@ fn main() {
         .split(',')
         .map(|crab| crab.parse().unwrap())
         .collect();
-    let num_crabs = crabs.len();
-    let median = *crabs.select_nth_unstable(num_crabs / 2).1;
+    let mean_lo = crabs.iter().sum::<i32>() / crabs.len() as i32;
+    let mean_hi = mean_lo + 1;
+    let dist = |lhs: i32, rhs: i32| {
+        let abs = (lhs - rhs).abs();
+        abs * (abs + 1) / 2
+    };
     println!(
         "{}",
-        crabs.iter().map(|crab| (crab - median).abs()).sum::<i32>()
+        min(
+            crabs.iter().map(|&crab| dist(crab, mean_lo)).sum::<i32>(),
+            crabs.iter().map(|&crab| dist(crab, mean_hi)).sum::<i32>(),
+        )
     );
 }
