@@ -1,5 +1,34 @@
 use std::io::BufRead;
 
+fn mark_basin(i: usize, j: usize, grid: &Vec<Vec<u32>>, is_visited: &mut Vec<Vec<bool>>) -> usize {
+    if is_visited[i][j] {
+        return 0;
+    }
+
+    is_visited[i][j] = true;
+    if grid[i][j] == 9 {
+        return 0;
+    }
+
+    let m = grid.len();
+    let n = grid[0].len();
+
+    let mut size = 1;
+    if i != 0 {
+        size += mark_basin(i - 1, j, grid, is_visited);
+    }
+    if i != m - 1 {
+        size += mark_basin(i + 1, j, grid, is_visited);
+    }
+    if j != 0 {
+        size += mark_basin(i, j - 1, grid, is_visited);
+    }
+    if j != n - 1 {
+        size += mark_basin(i, j + 1, grid, is_visited);
+    }
+    size
+}
+
 fn main() {
     let grid: Vec<Vec<_>> = std::io::stdin()
         .lock()
@@ -15,19 +44,17 @@ fn main() {
     let m = grid.len();
     let n = grid[0].len();
 
-    let is_low_point = |(i, j): (usize, usize)| {
-        (i == 0 || grid[i][j] < grid[i - 1][j])
-            && (i == m - 1 || grid[i][j] < grid[i + 1][j])
-            && (j == 0 || grid[i][j] < grid[i][j - 1])
-            && (j == n - 1 || grid[i][j] < grid[i][j + 1])
-    };
-
+    let mut is_visited = vec![vec![false; n]; m];
+    let mut basin_sizes: Vec<_> = (0..m * n)
+        .map(|i| mark_basin(i / n, i % n, &grid, &mut is_visited))
+        .collect();
+    basin_sizes.sort();
     println!(
         "{}",
-        (0..m * n)
-            .map(|i| (i / n, i % n))
-            .filter(|&coords| is_low_point(coords))
-            .map(|(i, j)| grid[i][j] + 1)
-            .sum::<u32>()
+        basin_sizes
+            .iter()
+            .rev()
+            .take(3)
+            .fold(1, |acc, size| acc * size)
     );
 }
