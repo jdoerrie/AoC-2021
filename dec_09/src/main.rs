@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-fn mark_basin(i: usize, j: usize, grid: &Vec<Vec<u32>>, is_visited: &mut Vec<Vec<bool>>) -> usize {
+fn mark_basin(i: usize, j: usize, grid: &[Vec<u32>], is_visited: &mut Vec<Vec<bool>>) -> usize {
     if is_visited[i][j] {
         return 0;
     }
@@ -48,13 +48,6 @@ fn main() {
     let mut basin_sizes: Vec<_> = (0..m * n)
         .map(|i| mark_basin(i / n, i % n, &grid, &mut is_visited))
         .collect();
-    basin_sizes.sort();
-    println!(
-        "{}",
-        basin_sizes
-            .iter()
-            .rev()
-            .take(3)
-            .fold(1, |acc, size| acc * size)
-    );
+    basin_sizes.sort_unstable();
+    println!("{}", basin_sizes.iter().rev().take(3).product::<usize>());
 }
