@@ -1,42 +1,65 @@
 use std::io::BufRead;
 
-fn score_line(line: &str) -> u64 {
-    let matches = |lhs, rhs| {
-        (lhs == '(' && rhs == ')')
-            || (lhs == '[' && rhs == ']')
-            || (lhs == '{' && rhs == '}')
-            || (lhs == '<' && rhs == '>')
+enum Result {
+    Complete,
+    Incomplete(String),
+    Corrupt(char),
+}
+
+fn check_line(line: &str) -> Result {
+    let get_matching = |c| match c {
+        '(' => ')',
+        ')' => '(',
+        '[' => ']',
+        ']' => '[',
+        '{' => '}',
+        '}' => '{',
+        '<' => '>',
+        '>' => '<',
+        _ => c,
     };
 
-    let get_points = |c| match c {
-        ')' => 3,
-        ']' => 57,
-        '}' => 1197,
-        '>' => 25137,
-        _ => 0,
-    };
     let mut stack = Vec::new();
     for c in line.chars() {
         match c {
             '(' | '[' | '{' | '<' => stack.push(c),
             ')' | ']' | '}' | '>' => {
-                if !matches(stack.pop().unwrap_or('_'), c) {
-                    return get_points(c);
+                if get_matching(c) != stack.pop().unwrap_or(c) {
+                    return Result::Corrupt(c);
                 }
             }
             _ => continue,
         }
     }
-    0
+
+    if stack.is_empty() {
+        Result::Complete
+    } else {
+        Result::Incomplete(stack.iter().rev().map(|&c| get_matching(c)).collect())
+    }
 }
 
 fn main() {
-    println!(
-        "{}",
-        std::io::stdin()
-            .lock()
-            .lines()
-            .map(|line| score_line(&line.unwrap()))
-            .sum::<u64>()
-    );
+    let mut scores = std::io::stdin()
+        .lock()
+        .lines()
+        .filter_map(|line| match check_line(&line.unwrap()) {
+            Result::Incomplete(str) => Some(str),
+            _ => None,
+        })
+        .map(|str| {
+            str.chars().fold(0usize, |acc, c| {
+                acc * 5
+                    + match c {
+                        ')' => 1,
+                        ']' => 2,
+                        '}' => 3,
+                        '>' => 4,
+                        _ => 0,
+                    }
+            })
+        })
+        .collect::<Vec<_>>();
+    let num_scores = scores.len();
+    println!("{}", scores.select_nth_unstable(num_scores / 2).1);
 }
