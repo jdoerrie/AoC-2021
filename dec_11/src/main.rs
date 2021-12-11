@@ -1,6 +1,5 @@
 use std::io::BufRead;
 
-const STEPS: usize = 100;
 const GRID_X: usize = 10;
 const GRID_Y: usize = 10;
 const NEXT: [(isize, isize); 8] = [
@@ -25,8 +24,9 @@ fn main() {
         })
         .collect();
 
-    let mut flash_count = 0;
-    for _ in 0..STEPS {
+    let mut step = 0;
+    loop {
+        step += 1;
         let mut flashing: Vec<_> = (0..GRID_X * GRID_Y)
             .map(|i| (i / GRID_Y, i % GRID_Y))
             .filter(|&(i, j)| {
@@ -35,6 +35,7 @@ fn main() {
             })
             .collect();
 
+        let mut flash_count = 0;
         while !flashing.is_empty() {
             flash_count += flashing.len();
             flashing = flashing
@@ -63,7 +64,10 @@ fn main() {
                     grid[i][j] = 0;
                 }
             });
-    }
 
-    println!("{}", flash_count);
+        if flash_count == GRID_X * GRID_Y {
+            println!("{}", step);
+            break;
+        }
+    }
 }
