@@ -13,16 +13,20 @@ const NEXT: [(isize, isize); 8] = [
     (1, 1),
 ];
 fn main() {
-    let mut grid: Vec<Vec<_>> = std::io::stdin()
+    let mut grid: [[_; GRID_Y]; GRID_X] = std::io::stdin()
         .lock()
         .lines()
         .map(|line| {
             line.unwrap()
                 .chars()
                 .map(|c| c.to_digit(10).unwrap())
-                .collect()
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
         })
-        .collect();
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
 
     let mut step = 0;
     loop {
