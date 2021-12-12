@@ -2,13 +2,22 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::BufRead;
 
-fn num_paths(node: &str, mut path: HashSet<String>, graph: &HashMap<String, Vec<String>>) -> usize {
-    if path.contains(node) && node == node.to_ascii_lowercase() {
-        return 0;
-    }
-
+fn num_paths(
+    node: &str,
+    mut path: HashSet<String>,
+    mut has_dupes: bool,
+    graph: &HashMap<String, Vec<String>>,
+) -> usize {
     if node == "end" {
         return 1;
+    }
+
+    if path.contains(node) && node == node.to_ascii_lowercase() {
+        if has_dupes || node == "start" {
+            return 0;
+        } else {
+            has_dupes = true;
+        }
     }
 
     path.insert(String::from(node));
@@ -16,7 +25,7 @@ fn num_paths(node: &str, mut path: HashSet<String>, graph: &HashMap<String, Vec<
         .get(node)
         .unwrap()
         .iter()
-        .map(|adj| num_paths(adj, path.clone(), graph))
+        .map(|adj| num_paths(adj, path.clone(), has_dupes, graph))
         .sum()
 }
 
@@ -33,5 +42,5 @@ fn main() {
         graph.entry(u).or_insert_with(Vec::new).push(v);
     }
 
-    println!("{}", num_paths("start", HashSet::new(), &graph));
+    println!("{}", num_paths("start", HashSet::new(), false, &graph));
 }
