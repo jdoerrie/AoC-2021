@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::collections::HashSet;
 use std::io::BufRead;
 
@@ -38,17 +39,26 @@ fn main() {
                     .iter()
                     .map(|&(x, y)| (if x < l { x } else { 2 * l - x }, y))
                     .collect();
-                break;
             }
             Ins::FoldY(l) => {
                 points = points
                     .iter()
                     .map(|&(x, y)| (x, if y < l { y } else { 2 * l - y }))
                     .collect();
-                break;
             }
         }
     }
 
-    println!("{}", points.len());
+    let (max_x, max_y) = points.iter().fold((0, 0), |(max_x, max_y), &(x, y)| {
+        (max(max_x, x), max(max_y, y))
+    });
+
+    for y in 0..=max_y {
+        println!(
+            "{}",
+            (0..=max_x)
+                .map(|x| if points.contains(&(x, y)) { '#' } else { '.' })
+                .collect::<String>()
+        );
+    }
 }
