@@ -30,7 +30,7 @@ fn main() {
         *counts.entry((window[0], window[1])).or_insert(0) += 1;
     }
 
-    for _ in 0..10 {
+    for _ in 0..40 {
         let mut new_counts = HashMap::new();
         for (pair, count) in counts {
             match rules.get(&pair) {
