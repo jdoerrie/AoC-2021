@@ -21,7 +21,7 @@ fn main() {
     heap.push((Reverse(0), (0, 0)));
     let mut dists = HashMap::new();
     while let Some((Reverse(cost), pos)) = heap.pop() {
-        if pos == (m - 1, n - 1) {
+        if pos == (5 * m - 1, 5 * n - 1) {
             println!("{}", cost);
             break;
         }
@@ -34,11 +34,12 @@ fn main() {
         for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
             let x = (pos.0 as isize + dx) as usize;
             let y = (pos.1 as isize + dy) as usize;
-            if x >= m || y >= n {
+            if x >= 5 * m || y >= 5 * n {
                 continue;
             }
 
-            heap.push((Reverse(cost + costs[x][y]), (x, y)));
+            let curr_cost = (costs[x % m][y % n] + ((x / m) as u32) + ((y / n) as u32) - 1) % 9 + 1;
+            heap.push((Reverse(cost + curr_cost), (x, y)));
         }
     }
 }
