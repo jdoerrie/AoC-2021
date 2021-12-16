@@ -82,13 +82,24 @@ fn parse_packet(data: &str) -> (Packet, BitsRead) {
     }
 }
 
-fn sum_versions(packet: &Packet) -> u64 {
+fn evaluate(packet: &Packet) -> u64 {
     match packet {
-        Packet::Literal(header, _) => header.version as u64,
+        Packet::Literal(_, val) => *val,
         Packet::Operator(header, packets) => {
-            packets.iter().fold(header.version as u64, |acc, packet| {
-                acc + sum_versions(packet)
-            })
+            let evals = packets
+                .iter()
+                .map(|packet| evaluate(packet))
+                .collect::<Vec<_>>();
+            match header.type_id {
+                0 => evals.iter().sum(),
+                1 => evals.iter().product(),
+                2 => *evals.iter().min().unwrap(),
+                3 => *evals.iter().max().unwrap(),
+                5 => (evals[0] > evals[1]) as u64,
+                6 => (evals[0] < evals[1]) as u64,
+                7 => (evals[0] == evals[1]) as u64,
+                _ => 0,
+            }
         }
     }
 }
@@ -102,5 +113,5 @@ fn main() {
         .map(|c| format!("{:04b}", u8::from_str_radix(&c.to_string(), 16).unwrap()))
         .collect::<Vec<_>>()
         .join("");
-    println!("{}", sum_versions(&parse_packet(&bit_string).0));
+    println!("{}", evaluate(&parse_packet(&bit_string).0));
 }
