@@ -1,6 +1,6 @@
 use std::io::BufRead;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Number {
     Regular(u8),
     Pair(Box<(Number, Number)>),
@@ -134,11 +134,25 @@ fn magnitude(num: &Number) -> u64 {
 }
 
 fn main() {
-    let num = std::io::stdin()
+    let nums = std::io::stdin()
         .lock()
         .lines()
         .map(|line| parse_number(line.unwrap().as_bytes()))
-        .reduce(plus)
-        .unwrap();
-    println!("mag({}) = {}", to_string(&num), magnitude(&num));
+        .collect::<Vec<_>>();
+
+    println!(
+        "{}",
+        (0..nums.len() * nums.len())
+            .filter_map(|n| {
+                let i = n / nums.len();
+                let j = n % nums.len();
+                if i != j {
+                    Some(magnitude(&plus(nums[i].clone(), nums[j].clone())))
+                } else {
+                    None
+                }
+            })
+            .max()
+            .unwrap()
+    );
 }
