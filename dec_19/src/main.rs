@@ -57,7 +57,13 @@ fn minus(lhs: &Coords, rhs: &Coords) -> Coords {
     result
 }
 
-fn merge(lhs: &mut HashSet<Coords>, scan: &[Coords]) -> bool {
+fn dist(lhs: &Coords, rhs: &Coords) -> usize {
+    lhs.iter()
+        .zip(rhs)
+        .fold(0, |acc, (l, r)| acc + (l - r).abs() as usize)
+}
+
+fn merge(lhs: &mut HashSet<Coords>, scan: &[Coords]) -> Option<Coords> {
     for i in 0..24 {
         let (scan_origin, counts) = lhs
             .iter()
@@ -73,11 +79,11 @@ fn merge(lhs: &mut HashSet<Coords>, scan: &[Coords]) -> bool {
                 .for_each(|coord| {
                     lhs.insert(coord);
                 });
-            return true;
+            return Some(scan_origin);
         }
     }
 
-    false
+    None
 }
 
 fn main() {
@@ -101,17 +107,26 @@ fn main() {
     let mut merged = scans[0].clone().into_iter().collect::<HashSet<_>>();
     let mut are_merged = HashSet::new();
     are_merged.insert(0);
+    let mut scan_origins = vec![[0; 3]];
     while are_merged.len() != n {
         for (i, scan) in scans.iter().enumerate().take(n) {
             if are_merged.contains(&i) {
                 continue;
             }
 
-            if merge(&mut merged, scan.as_slice()) {
+            if let Some(scan_origin) = merge(&mut merged, scan.as_slice()) {
                 are_merged.insert(i);
+                scan_origins.push(scan_origin);
             }
         }
     }
 
-    println!("{}", merged.len());
+    println!(
+        "{}",
+        scan_origins
+            .iter()
+            .flat_map(|orig_l| scan_origins.iter().map(|orig_r| dist(orig_l, orig_r)))
+            .max()
+            .unwrap()
+    );
 }
