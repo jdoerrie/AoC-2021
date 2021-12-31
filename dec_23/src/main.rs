@@ -1,9 +1,11 @@
+use std::cmp::max;
+use std::cmp::min;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::io::BufRead;
 
-const ROWS: usize = 5;
+const ROWS: usize = 7;
 const COLS: usize = 13;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -41,10 +43,9 @@ const fn get_cost(amph: Amph) -> usize {
 type Coord = [usize; 2];
 
 const HALL_ROW: usize = 1;
-const ROOM_ROW1: usize = 2;
-const ROOM_ROW2: usize = 3;
+const ROOM_ROWS: [usize; 4] = [2, 3, 4, 5];
 
-const VALIDS: [Coord; 15] = [
+const VALIDS: [Coord; 23] = [
     [HALL_ROW, 1],
     [HALL_ROW, 2],
     // [HALL_ROW, 3],
@@ -56,18 +57,26 @@ const VALIDS: [Coord; 15] = [
     // [HALL_ROW, 9],
     [HALL_ROW, 10],
     [HALL_ROW, 11],
-    [ROOM_ROW1, get_col(Amph::A)],
-    [ROOM_ROW1, get_col(Amph::B)],
-    [ROOM_ROW1, get_col(Amph::C)],
-    [ROOM_ROW1, get_col(Amph::D)],
-    [ROOM_ROW2, get_col(Amph::A)],
-    [ROOM_ROW2, get_col(Amph::B)],
-    [ROOM_ROW2, get_col(Amph::C)],
-    [ROOM_ROW2, get_col(Amph::D)],
+    [ROOM_ROWS[0], get_col(Amph::A)],
+    [ROOM_ROWS[0], get_col(Amph::B)],
+    [ROOM_ROWS[0], get_col(Amph::C)],
+    [ROOM_ROWS[0], get_col(Amph::D)],
+    [ROOM_ROWS[1], get_col(Amph::A)],
+    [ROOM_ROWS[1], get_col(Amph::B)],
+    [ROOM_ROWS[1], get_col(Amph::C)],
+    [ROOM_ROWS[1], get_col(Amph::D)],
+    [ROOM_ROWS[2], get_col(Amph::A)],
+    [ROOM_ROWS[2], get_col(Amph::B)],
+    [ROOM_ROWS[2], get_col(Amph::C)],
+    [ROOM_ROWS[2], get_col(Amph::D)],
+    [ROOM_ROWS[3], get_col(Amph::A)],
+    [ROOM_ROWS[3], get_col(Amph::B)],
+    [ROOM_ROWS[3], get_col(Amph::C)],
+    [ROOM_ROWS[3], get_col(Amph::D)],
 ];
 
 fn make_path(mut src: Coord, dst: Coord) -> Vec<Coord> {
-    let mut path = Vec::with_capacity(11);
+    let mut path = Vec::with_capacity(15);
     path.push(src);
 
     if src == dst {
@@ -116,14 +125,30 @@ fn make_path(mut src: Coord, dst: Coord) -> Vec<Coord> {
 
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct State {
-    pos_a: [Coord; 2],
-    pos_b: [Coord; 2],
-    pos_c: [Coord; 2],
-    pos_d: [Coord; 2],
+    pos_a: [Coord; 4],
+    pos_b: [Coord; 4],
+    pos_c: [Coord; 4],
+    pos_d: [Coord; 4],
 }
 
 impl State {
-    fn get_pos_mut(&mut self, amph: Amph) -> &mut [Coord; 2] {
+    fn get_est_cost(&self) -> usize {
+        Amph::all()
+            .into_iter()
+            .flat_map(|amph| {
+                self.get_pos(amph).iter().map(move |pos| {
+                    (if get_col(amph) != pos[1] {
+                        pos[0] - HALL_ROW + 1 + max(get_col(amph), pos[1])
+                            - min(get_col(amph), pos[1])
+                    } else {
+                        0
+                    }) * get_cost(amph)
+                })
+            })
+            .sum()
+    }
+
+    fn get_pos_mut(&mut self, amph: Amph) -> &mut [Coord; 4] {
         match amph {
             Amph::A => &mut self.pos_a,
             Amph::B => &mut self.pos_b,
@@ -132,7 +157,7 @@ impl State {
         }
     }
 
-    fn get_pos(&self, amph: Amph) -> &[Coord; 2] {
+    fn get_pos(&self, amph: Amph) -> &[Coord; 4] {
         match amph {
             Amph::A => &self.pos_a,
             Amph::B => &self.pos_b,
@@ -143,8 +168,10 @@ impl State {
 
     fn is_done(&self) -> bool {
         Amph::all().into_iter().all(|amph| {
-            self.get_pos(amph).iter().min() == Some(&[ROOM_ROW1, get_col(amph)])
-                && self.get_pos(amph).iter().max() == Some(&[ROOM_ROW2, get_col(amph)])
+            self.get_pos(amph)
+                .iter()
+                .enumerate()
+                .all(|(i, coord)| coord == &[ROOM_ROWS[i], get_col(amph)])
         })
     }
 
@@ -156,19 +183,22 @@ impl State {
     ) -> Option<usize> {
         debug_assert!(VALIDS.iter().any(|&v| v == [src_x, src_y]));
         debug_assert!(VALIDS.iter().any(|&v| v == [dst_x, dst_y]));
-
-        // Don't allow moves from the correct final position.
-        if [src_x, src_y] == [ROOM_ROW2, get_col(amph)] {
+        // Disallow moves that don't change the column.
+        if src_y == dst_y {
             return None;
         }
 
-        if [src_x, src_y] == [ROOM_ROW1, get_col(amph)]
-            && self
-                .get_pos(amph)
-                .iter()
-                .any(|&p| p == [ROOM_ROW2, get_col(amph)])
-        {
-            return None;
+        // Don't allow moves from the correct final position.
+        for (i, &room) in ROOM_ROWS.iter().enumerate() {
+            if [src_x, src_y] == [room, get_col(amph)]
+                && (i + 1..ROOM_ROWS.len()).all(|j| {
+                    self.get_pos(amph)
+                        .iter()
+                        .any(|&p| p == [ROOM_ROWS[j], get_col(amph)])
+                })
+            {
+                return None;
+            }
         }
 
         // Can't stay in Hall. Must go in correct column.
@@ -176,8 +206,8 @@ impl State {
             return None;
         }
 
-        // If starting and ending in room, room needs to be the same or the destination.
-        if src_x != HALL_ROW && dst_x != HALL_ROW && src_y != dst_y && dst_y != get_col(amph) {
+        // If starting and ending in room, final room needs to be the destination.
+        if src_x != HALL_ROW && dst_x != HALL_ROW && dst_y != get_col(amph) {
             return None;
         }
 
@@ -186,11 +216,19 @@ impl State {
             .flat_map(|&amph| self.get_pos(amph).iter().zip(std::iter::repeat(amph)))
             .collect::<HashMap<_, _>>();
 
-        // If going into the final room, the other spot can't be occupied by a different amph.
-        if [dst_x, dst_y] == [ROOM_ROW1, get_col(amph)] {
-            let tile = blocked.get(&[ROOM_ROW2, dst_y]);
-            if tile.is_some() && *tile.unwrap() != amph {
-                return None;
+        if blocked.contains_key(&[dst_x, dst_y]) {
+            return None;
+        }
+
+        // If going into the final room, the other must be occupied by same amph.
+        if dst_y == get_col(amph) {
+            for row in ROOM_ROWS.iter().skip(dst_x - 1) {
+                if match blocked.get(&[*row, dst_y]) {
+                    Some(a) => *a != amph,
+                    _ => true,
+                } {
+                    return None;
+                }
             }
         }
 
@@ -234,6 +272,8 @@ impl State {
             "#############".as_bytes().try_into().unwrap(),
             "#...........#".as_bytes().try_into().unwrap(),
             "###.#.#.#.###".as_bytes().try_into().unwrap(),
+            "  #.#.#.#.#  ".as_bytes().try_into().unwrap(),
+            "  #.#.#.#.#  ".as_bytes().try_into().unwrap(),
             "  #.#.#.#.#  ".as_bytes().try_into().unwrap(),
             "  #########  ".as_bytes().try_into().unwrap(),
         ];
@@ -283,24 +323,23 @@ fn main() {
             acc
         });
 
-    let mut state = State {
+    let state = State {
         pos_a: amphs.get(&Amph::A).unwrap().clone().try_into().unwrap(),
         pos_b: amphs.get(&Amph::B).unwrap().clone().try_into().unwrap(),
         pos_c: amphs.get(&Amph::C).unwrap().clone().try_into().unwrap(),
         pos_d: amphs.get(&Amph::D).unwrap().clone().try_into().unwrap(),
     };
 
-    state.pos_a.sort_unstable();
-    state.pos_b.sort_unstable();
-    state.pos_c.sort_unstable();
-    state.pos_d.sort_unstable();
-
     let mut heap = BinaryHeap::new();
     let mut costs = HashMap::new();
-    heap.push((Reverse(0), state.clone()));
-    costs.insert(state, Node::Unex(0));
+    let est_cost = state.get_est_cost();
+    heap.push((Reverse(est_cost), state.clone()));
+    costs.insert(state, Node::Unex(est_cost));
 
     while let Some((Reverse(cost), state)) = heap.pop() {
+        println!("Popping");
+        state.print();
+        println!("cost: {}\n", cost);
         if state.is_done() {
             state.print();
             println!("Done: {}", cost);
@@ -312,7 +351,7 @@ fn main() {
         }
 
         for (next, energy) in state.get_next() {
-            let new_cost = cost + energy;
+            let new_cost = cost + energy + next.get_est_cost() - state.get_est_cost();
             if match costs.get(&next) {
                 Some(Node::Seen) => false,
                 Some(Node::Unex(c)) => *c > new_cost,

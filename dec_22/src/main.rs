@@ -6,7 +6,7 @@ use std::io::BufRead;
 enum State {
     Empty,
     Full,
-    Mixed(Box<[Octant; 8]>),
+    Mixed(Box<[Split; 2]>),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -81,50 +81,80 @@ impl Cuboid {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-struct Octant {
+struct Split {
     state: State,
     cuboid: Cuboid,
 }
 
-impl Octant {
+impl Split {
     fn vol(&self) -> usize {
         match &self.state {
             State::Empty => 0,
             State::Full => self.cuboid.vol(),
-            State::Mixed(octants) => octants.iter().map(|oct| oct.vol()).sum(),
+            State::Mixed(splits) => splits.iter().map(Split::vol).sum(),
         }
     }
 
     fn collapse(&mut self) {
-        if let State::Mixed(octants) = &mut self.state {
-            octants.iter_mut().for_each(|oct| oct.collapse());
-            if octants.iter().all(|oct| matches!(oct.state, State::Empty)) {
+        if let State::Mixed(splits) = &mut self.state {
+            splits.iter_mut().for_each(|split| split.collapse());
+            if splits
+                .iter()
+                .all(|split| matches!(split.state, State::Empty))
+            {
                 self.state = State::Empty;
-            } else if octants.iter().all(|oct| matches!(oct.state, State::Full)) {
+            } else if splits
+                .iter()
+                .all(|split| matches!(split.state, State::Full))
+            {
                 self.state = State::Full;
             }
         }
     }
 
-    fn split(&self) -> [Octant; 8] {
+    fn split(&self, axis: usize) -> [Split; 2] {
         let c = &self.cuboid;
 
-        (0..8)
-            .map(|i| Octant {
+        (0..2)
+            .map(|i| Split {
                 state: self.state.clone(),
                 cuboid: Cuboid {
                     coords: [
                         [
-                            if i & 4 == 0 { c.x_min() } else { c.x_mid() },
-                            if i & 4 == 0 { c.x_mid() } else { c.x_max() },
+                            if axis == 0 && i == 0 {
+                                c.x_mid()
+                            } else {
+                                c.x_min()
+                            },
+                            if axis == 0 && i == 1 {
+                                c.x_mid()
+                            } else {
+                                c.x_max()
+                            },
                         ],
                         [
-                            if i & 2 == 0 { c.y_min() } else { c.y_mid() },
-                            if i & 2 == 0 { c.y_mid() } else { c.y_max() },
+                            if axis == 1 && i == 0 {
+                                c.y_mid()
+                            } else {
+                                c.y_min()
+                            },
+                            if axis == 1 && i == 1 {
+                                c.y_mid()
+                            } else {
+                                c.y_max()
+                            },
                         ],
                         [
-                            if i & 1 == 0 { c.z_min() } else { c.z_mid() },
-                            if i & 1 == 0 { c.z_mid() } else { c.z_max() },
+                            if axis == 2 && i == 0 {
+                                c.z_mid()
+                            } else {
+                                c.z_min()
+                            },
+                            if axis == 2 && i == 1 {
+                                c.z_mid()
+                            } else {
+                                c.z_max()
+                            },
                         ],
                     ],
                 },
@@ -142,17 +172,37 @@ impl Octant {
             let is_noop = (is_on && matches!(self.state, State::Full))
                 || (!is_on && matches!(self.state, State::Empty));
             match &mut self.state {
-                State::Mixed(octants) => octants.iter_mut().for_each(|oct| oct.set(cuboid, is_on)),
+                State::Mixed(splits) => {
+                    splits.iter_mut().for_each(|split| split.set(cuboid, is_on))
+                }
                 _ => {
                     if !is_noop {
-                        let mut octants = self.split();
-                        octants.iter_mut().for_each(|oct| oct.set(cuboid, is_on));
-                        self.state = State::Mixed(Box::new(octants));
+                        let axis = common
+                            .coords
+                            .iter()
+                            .zip(self.cuboid.coords)
+                            .enumerate()
+                            .filter(|(_, (_, [min, max]))| *max > (min + 1))
+                            .map(|(i, ([l_min, l_max], [r_min, r_max]))| {
+                                let res = ((r_max - r_min) / (l_max - l_min), i);
+                                // println!("[{}, {}], [{}, {}], {:?}", l_min, l_max, r_min, r_max, res);
+                                res
+                            })
+                            .max()
+                            .unwrap()
+                            .1;
+
+                        let mut splits = self.split(axis);
+                        // println!("       {:?},\nSelf   {:?}\nCommon {:?}", cuboid, self.cuboid, common);
+                        // println!("Axis: {}", axis);
+                        // println!("-----------------------------------------------------------------------");
+                        // assert_eq!(splits[0].cuboid.vol() + splits[1].cuboid.vol(), self.cuboid.vol());
+                        splits.iter_mut().for_each(|split| split.set(cuboid, is_on));
+                        self.state = State::Mixed(Box::new(splits));
                     }
                 }
             }
         }
-        self.collapse();
     }
 }
 
@@ -174,16 +224,21 @@ fn parse_line(line: &str) -> (Cuboid, bool) {
 }
 
 fn main() {
-    let mut octant = Octant {
+    let len = 1 << 16;
+    let mut split = Split {
         state: State::Empty,
         cuboid: Cuboid {
-            coords: [[-50, 51], [-50, 51], [-50, 51]],
+            coords: [[-len, len + 1], [-len, len + 1], [-len, len + 1]],
         },
     };
     std::io::stdin()
         .lock()
         .lines()
         .map(|line| parse_line(&line.unwrap()))
-        .for_each(|(cube, is_on)| octant.set(&cube, is_on));
-    println!("{}", octant.vol());
+        .for_each(|(cube, is_on)| {
+            println!("{:?}", (is_on, &cube));
+            split.set(&cube, is_on);
+            split.collapse();
+        });
+    println!("{}", split.vol());
 }
